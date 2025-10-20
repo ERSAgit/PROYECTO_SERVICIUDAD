@@ -203,5 +203,44 @@
   Logging: Usa SLF4J para registrar el proceso de lectura y detectar errores
   Ejemplo del proceso de adaptación: Línea del archivo (formato mainframe): 000123456720251000001500000180000.50
   Se convierte en: FacturaEnergia( idCliente = "0001234567", periodo = "202510", consumoKwh = 1500, valorPagar = 180000.50 )
-  
+
   Justificación: El patrón Adapter es esencial cuando integramos sistemas legados con interfaces incompatibles. En este caso, permite que nuestra aplicación moderna en Java consuma datos de un mainframe antiguo sin contaminar la lógica de negocio con detalles de bajo nivel sobre formatos de archivos. Es un patrón fundamental en arquitecturas hexagonales donde los adaptadores traducen entre el mundo externo y el dominio de la aplicación.
+
+
+- # Patrón Repository (Provisto por Spring Data JPA)
+
+Ubicación:
+```src/main/java/com/serviciudad/serviciudad/infrastructure/adapter/out/persistence/FacturaAcueductoRepositoryJpa.java```
+(Complementos relacionados:
+```src/main/java/com/serviciudad/serviciudad/infrastructure/adapter/out/persistence/FacturaAcueductoEntity.java```
+```src/main/java/com/serviciudad/serviciudad/infrastructure/adapter/out/persistence/FacturasAcueductoAdapter.java)```
+
+¿Está implementado correctamente?
+Sí. En el repositorio se usa Spring Data JPA extendiendo JpaRepository<FacturaAcueductoEntity, Long> y se definió un método derivado findByIdCliente(String idCliente) para consultas frecuentes por identificador de cliente. La entidad JPA (FacturaAcueductoEntity) está correctamente anotada y mapeada a la tabla facturas_acueducto. El adaptador (FacturasAcueductoAdapter) usa ese repository para obtener entidades y transformarlas al modelo de dominio FacturaAcueducto.
+
+Por qué lo usamos (motivación en este proyecto)
+Necesitamos abstraer el acceso a la base de datos MySQL (lectura/escritura de facturas de acueducto) sin mezclar sentencias SQL ni detalles de JPA dentro de la lógica de negocio. Spring Data JPA nos da una implementación automática del patrón Repository que:
+
+Proporciona operaciones CRUD básicas sin escribir código repetitivo.
+
+Permite definir métodos por convención (findBy...) para consultas comunes.
+
+Integra manejo de transacciones y paginación de forma sencilla.
+
+¿Qué problema resuelve?
+Sin el patrón Repository tendríamos que escribir muchas clases con JDBC/JPA boilerplate: EntityManager creation, queries, mapeos, manejo de transacciones, etc. El Repository abstrae esa complejidad y nos permite centrarnos en la lógica (use cases) y en el mapeo entre entidad y dominio.
+
+Beneficios en nuestro proyecto
+
+Reducción de código repetitivo: save, findById, findAll, delete ya vienen implementados.
+
+Rapidez de desarrollo: crear nuevos queries es tan simple como declarar métodos con nombres semánticos (findByIdClienteAndPeriodo(...)).
+
+Testabilidad: en tests unitarios mockeas la interfaz del repositorio; en integración puedes usar H2 o Testcontainers.
+
+Intercambiabilidad: si mañana cambias MySQL por otro RDBMS o por una API, sólo cambias el adaptador/implementación.
+
+Soporte a características avanzadas: paginación, sorting, @Query para JPQL/SQL nativo, especificaciones (Specification API).
+
+Justificación (resumen final):
+El patrón Repository (mediante Spring Data JPA) abstrae la complejidad del acceso a datos y reduce boilerplate, acelera el desarrollo y mejora la mantenibilidad. En nuestro monolito hexagonal sirve como el adaptador de persistencia que implementa el port out (FacturasAcueductoPort) permitiendo que los use cases y el dominio permanezcan limpios, testables y sin acoplamiento a detalles de MySQL/AWS.
